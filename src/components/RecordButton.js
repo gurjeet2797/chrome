@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import { motion } from 'framer-motion';
 
 const RecordButton = ({ onRecord, onStop, isRecording }) => {
@@ -6,9 +6,90 @@ const RecordButton = ({ onRecord, onStop, isRecording }) => {
     if (isRecording) {
       onStop();
     } else {
-      onRecord();
+      startRecording();
     }
   };
+
+  const startRecording = () => {
+    setIsRecording(true);
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      const recorder = new MediaRecorder(stream);
+      var audioChunks = [];
+      recorder.ondataavailable = (e) => {
+        audioChunks.push(e.data);
+        if(recorder.state === "inactive"){
+          const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg-3' });
+          sendAudioToAPI(audioBlob);
+        }
+      };
+      recorder.onstop = () => setIsRecording(false);
+      recorder.start();
+      setMediaRecorder(recorder);
+    });
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder) mediaRecorder.stop();
+    setIsRecording(false);
+  };
+
+  const sendAudioToBackend = async (audioData) => {
+    try {
+      const formData = new FormData();
+      const blob = new Blob([audioData], { type: 'audio/webm' });
+      formData.append('file', blob);
+
+      const response = await fetch('http://127.0.0.1:8001/process_voice', { //connection to backend
+        method: 'POST',
+        mode: 'cors',
+        body: formData,
+      });
+    
+    if (response) {
+      const result = await response.json();
+      setChatHistory([{ user: result.user_transcript, response: result.gpt_response }]);
+      console.log("Audio sent successfully:");
+      } else {
+      console.log("Failed to send audio:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('BACKEND IS BROKEN:', error);
+  }
+};
+
+function audioBlobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = function() {
+          // The result attribute contains the data as a base64 encoded string
+          resolve(reader.result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+  });
+};
+
+const sendAudioToAPI = async (audioData) => {
+  try {
+    const stringBlob = await audioBlobToBase64(audioData);
+    const response = await fetchItems(stringBlob);
+  if (response) {
+    const result = response.data.processVoice;
+    console.log(result)
+    const user_transcript = result.user_transcript;
+    const gpt_response = result.gpt_response;
+    console.log(result);
+    setChatHistory([{ user: result.user_transcript, response: result.gpt_response }]);
+    console.log("Audio sent successfully:");
+    } else {
+    console.log("Failed to send audio:", response.status, response.statusText);
+    }
+  } catch (error) {
+    console.error('BACKEND IS BROKEN:', error);
+}
+
+
+};
 
   return (
     <motion.button
