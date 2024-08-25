@@ -8,8 +8,9 @@
     "dev": "webpack --mode development --watch"
   },
   "dependencies": {
+    "@aws-amplify/api": "^6.0.46",
     "@aws-amplify/auth": "^6.3.11",
-    "aws-amplify": "^6.4.3",
+    "aws-amplify": "^6.5.2",
     "crypto-browserify": "^3.12.0",
     "framer-motion": "^4.1.17",
     "process": "^0.11.10",
